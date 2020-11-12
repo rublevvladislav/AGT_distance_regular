@@ -1,19 +1,22 @@
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 import numpy as np
 import networkx as nx
 
 c4 = np.array([[0,1,0,1], [1,0,1,0], [0,1,0,1], [1,0,1,0]])
 a1 = np.array([[0,1,1], [1,0,0], [1,0,0]])
 a3 = np.array([[0,1,1,1,0,0], [1,0,0,0,1,1], [1,0,0,0,1,1], [1,0,0,0,1,1], [0,1,1,1,0,0], [0,1,1,1,0,0]])
-c3 = np.array([[0,1,1], [1,1,0], [1,0,1]])
+c3 = np.array([[0,1,1], [1,1,1], [1,1,1]])
 c5 = np.array([[0,1,0,0,1], [1,0,1,0,0], [0,1,0,1,0], [0,0,1,0,1], [1,0,0,1,0]])
-nd = np.array([[0,1,0,0,1], [1,0,1,0,0], [1,1,0,1,0], [0,0,1,0,1], [1,0,1,1,0]])
-tt = np.array([[1, 0, 0, 0, 0, 0],  [0, 1, 1, 1, 1, 0],  [0, 0, 0, 0, 0, 1],
-        [0, 1, 0, 0, 0, 0],  [1, 0, 1, 1, 0, 1],  [0, 0, 0, 0, 1, 0],
-        [0, 0, 1, 0, 0, 0],  [1, 1, 0, 0, 1, 1],  [0, 0, 0, 1, 0, 0],
-        [0, 0, 0, 1, 0, 0],  [1, 1, 0, 0, 1, 1],  [0, 0, 1, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0],  [1, 0, 1, 1, 0, 1],  [0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 1], [0, 1, 1, 1, 1, 0], [1, 0, 0, 0, 0, 0]])
+nd = np.array([[0,1,1,0,1], 
+			   [1,0,1,0,0],
+			   [1,1,0,1,1],
+			   [0,0,1,0,1],
+			   [1,0,1,1,0]])
+
+
+def check_symmetric(a, tol=1e-8):
+    return np.allclose(a, a.T, atol=tol)
 
 def is_regular_graph(matrix):
 	#check that the graph is regular
@@ -182,13 +185,90 @@ def draw_graph(adjacency_matrix):
     edges = zip(rows.tolist(), cols.tolist())
     gr = nx.Graph()
     gr.add_edges_from(edges)
-    nx.draw(gr, node_size=500)
+    nx.draw(gr, node_size=500, with_labels=True)
     plt.show()
 
-#print(c5)
-print(is_distance_regular_graph(c5))
-print(layed_represent(0, c5))
-#print(intersect_array(c5))
-print(get_spectrum(c5))
 
-#draw_graph(c5)
+#print(c5)
+#print(is_distance_regular_graph(c5))
+#print(layed_represent(0, c5))
+#print(intersect_array(c5))
+#print(get_spectrum(c5))
+
+#draw_graph(c4)
+
+def get_edges(adjacency_matrix):
+	edges = []
+	for i in range(len(adjacency_matrix)):
+		for j in range(len(adjacency_matrix)):
+			if adjacency_matrix[i][j] != 0 and i > j:
+				edges.append([i, j])
+	return edges
+
+def draw_layer_represent(start_point, adjacency_matrix):
+	nodelist = layed_represent(start_point, adjacency_matrix)
+	print(nodelist)
+
+	height, widht = 600, 600
+	f_widht = widht/(len(nodelist)+1)
+	f_heights = [height/(len(i)+1) for i in nodelist]
+	
+	#find positions for vertexes
+	p_widht, p_height = [], []
+	lower_bound_widht = 0
+	for i, node in enumerate(nodelist):
+		lower_bound_widht = lower_bound_widht + f_widht
+		for m in range(len(node)):
+			p_widht.append(lower_bound_widht)
+		lower_bound_height, upper_bound_height = 0, 600
+		for j, point in enumerate(node):
+			if j%2==0:
+				lower_bound_height = lower_bound_height + f_heights[i]
+				p_height.append(lower_bound_height)
+			else:
+				upper_bound_height = upper_bound_height - f_heights[i]
+				p_height.append(upper_bound_height)
+
+	list_of_points = []
+	for column in nodelist:
+		for vertex in column:
+			list_of_points.append(vertex)
+
+	#sort points with positions by names
+	z = zip(p_widht, p_height, list_of_points)
+	zs = sorted(z, key=lambda tup: tup[2])
+	p_widht = [z[0] for z in zs]
+	p_height = [z[1] for z in zs]
+	list_of_points = [z[2] for z in zs]
+
+	cf = plt.gcf()
+	ax = cf.gca()
+	ax.set_axis_off()
+
+	edges = get_edges(adjacency_matrix)
+	edge_pos = np.asarray([([[p_widht[e[0]], p_height[e[0]]],[p_widht[e[1]], p_height[e[1]]]] ) for e in edges])
+	edge_collection = LineCollection(edge_pos)
+	ax.add_collection(edge_collection)
+
+	for iteration, label in enumerate(list_of_points):
+		plt.text(p_widht[iteration], p_height[iteration], label, size=12, color='w', family="sans-serif",
+	  		weight="normal",
+	    	alpha=None,
+	    	bbox=None,
+	    	horizontalalignment="center",
+	    	verticalalignment="center",
+	    	clip_on=True)
+	plt.scatter(p_widht, p_height, s=300, c="#1f78b4")
+	plt.show()
+	
+draw_layer_represent(0, nd)
+
+#draw_graph(nd)
+#print(Dijkstra(0, nd))
+'''
+rows, cols = np.where(tt == 1)
+edges = zip(rows.tolist(), cols.tolist())
+gr = nx.Graph()
+gr.add_edges_from(edges)
+print(nx.dijkstra_path(gr, 0, 2))
+'''
