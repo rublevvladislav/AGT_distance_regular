@@ -120,7 +120,14 @@ class Graph:
 		return np.array(weight).astype(int)
 
 	def intersect_array(self):
-		'''
+		is_dist_regular = self.is_distance_regular_graph()
+		if type(is_dist_regular) is not bool and is_dist_regular[0]:
+			return is_dist_regular[1]
+		else:
+			raise ValueError("Graph isn't distance regular, we can't find intersect array")
+		return
+
+	def intersect_matrix(self):
 		distances = self.Dijkstra(0)
 		diam = max(distances)
 		bs, cs = [], []
@@ -142,13 +149,62 @@ class Graph:
 					ci += 1
 			bs.append(bi)
 			cs.append(ci)
-		'''
-		is_dist_regular = self.is_distance_regular_graph()
-		if type(is_dist_regular) is not bool and is_dist_regular[0]:
-			return is_dist_regular[1]
-		else:
-			raise ValueError("Graph isn't distance regular, we can't find intersect array")
-		return
+		a = []
+		for i in range(diam+1):
+			a.append(bs[0]-bs[i]-cs[i])
+		mtrx = np.zeros((diam+1, diam+1))
+		for i in range(diam+1):
+			mtrx[i,i] = a[i]
+		for i in range(diam):
+			mtrx[i, i+1] = bs[i]
+			mtrx[i+1, i] = cs[i+1]
+		return mtrx
+
+	def get_spectrum_dist_regular(self):
+		distances = self.Dijkstra(0)
+		diam = max(distances)
+		bs, cs = [], []
+		for i in range(diam+1):
+			for w in range(len(distances)):
+				if distances[w] == i:
+					y = w
+					break
+			#now d(v,y) = i
+
+			#bi = number neighbours of y at distance i+1 from v
+			#ci = number neighbours of y at distance i-1 from v
+			bi = 0
+			ci = 0
+			for w in self._neighbours_of_vertex(y):
+				if distances[w] == i+1:
+					bi += 1
+				elif distances[w] == i-1:
+					ci += 1
+			bs.append(bi)
+			cs.append(ci)
+		a = []
+		for i in range(diam+1):
+			a.append(bs[0]-bs[i]-cs[i])
+		intersect_matrix = np.zeros((diam+1, diam+1))
+		for i in range(diam+1):
+			intersect_matrix[i,i] = a[i]
+		for i in range(diam):
+			intersect_matrix[i, i+1] = bs[i]
+			intersect_matrix[i+1, i] = cs[i+1]
+		w, v = np.linalg.eig(intersect_matrix)
+		us = []
+		for theta in w:
+			u = [1, theta/bs[0]]
+			for i in range(1, diam):
+				u.append((theta*u[i]-cs[i]*u[i-1]-a[i]*u[i])/bs[i])
+			us.append(u)
+		ks = [1]
+		ms = []
+		for i in range(diam):
+			ks.append(bs[i]*ks[i]/cs[i+1])
+		for vec in us:
+			ms.append(len(distances)/sum([ks[i]*vec[i]*vec[i] for i in range(diam+1)]))
+		return np.round(w), np.round(ms)
 
 	def layed_represent(self, start_point):
 		distances = self.Dijkstra(start_point)
@@ -246,20 +302,16 @@ def main():
 	#print(gr.get_adjacency_matrix())
 	#print(gr.is_distance_regular_graph())
 	#print(gr.intersect_array())
-	#print(gr.get_spectrum())
-	gr.add_vertex()
-	gr.add_edge(5, 0)
-	gr.add_edge(4, 5)
-	print(gr.get_adjacency_matrix())
+	print(gr.get_spectrum())
+	#gr.add_vertex()
+	#gr.add_edge(5, 0)
+	#gr.add_edge(4, 5)
+	#print(gr.intersect_matrix())
+	print(gr.get_spectrum_dist_regular())
 	print(gr.is_distance_regular_graph())
-	gr.draw()
+	#gr.draw()
 	#gr.draw_layer_represent(0)
 
 
 if __name__ == '__main__':
 	main()
-
-'''
-to-do:
-may be make graph generator
-'''
